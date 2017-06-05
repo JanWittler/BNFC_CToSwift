@@ -8,6 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		2A68FD651EE59E7200E1E71D /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A68FD641EE59E7200E1E71D /* main.swift */; };
+		2A68FD701EE59E8A00E1E71D /* AbstractSyntaxGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A68FD6B1EE59E8A00E1E71D /* AbstractSyntaxGenerator.swift */; };
+		2A68FD711EE59E8A00E1E71D /* BNFCRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A68FD6C1EE59E8A00E1E71D /* BNFCRule.swift */; };
+		2A68FD721EE59E8A00E1E71D /* ConsoleIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A68FD6D1EE59E8A00E1E71D /* ConsoleIO.swift */; };
+		2A68FD731EE59E8A00E1E71D /* MappingGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A68FD6E1EE59E8A00E1E71D /* MappingGenerator.swift */; };
+		2A68FD741EE59E8A00E1E71D /* PrettyPrinter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A68FD6F1EE59E8A00E1E71D /* PrettyPrinter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +30,11 @@
 /* Begin PBXFileReference section */
 		2A68FD611EE59E7200E1E71D /* BNFC_CToSwift */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BNFC_CToSwift; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A68FD641EE59E7200E1E71D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		2A68FD6B1EE59E8A00E1E71D /* AbstractSyntaxGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AbstractSyntaxGenerator.swift; sourceTree = "<group>"; };
+		2A68FD6C1EE59E8A00E1E71D /* BNFCRule.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BNFCRule.swift; sourceTree = "<group>"; };
+		2A68FD6D1EE59E8A00E1E71D /* ConsoleIO.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ConsoleIO.swift; sourceTree = "<group>"; };
+		2A68FD6E1EE59E8A00E1E71D /* MappingGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MappingGenerator.swift; sourceTree = "<group>"; };
+		2A68FD6F1EE59E8A00E1E71D /* PrettyPrinter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrettyPrinter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +68,11 @@
 			isa = PBXGroup;
 			children = (
 				2A68FD641EE59E7200E1E71D /* main.swift */,
+				2A68FD6C1EE59E8A00E1E71D /* BNFCRule.swift */,
+				2A68FD6B1EE59E8A00E1E71D /* AbstractSyntaxGenerator.swift */,
+				2A68FD6E1EE59E8A00E1E71D /* MappingGenerator.swift */,
+				2A68FD6D1EE59E8A00E1E71D /* ConsoleIO.swift */,
+				2A68FD6F1EE59E8A00E1E71D /* PrettyPrinter.swift */,
 			);
 			path = BNFC_CToSwift;
 			sourceTree = "<group>";
@@ -121,7 +136,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A68FD741EE59E8A00E1E71D /* PrettyPrinter.swift in Sources */,
+				2A68FD731EE59E8A00E1E71D /* MappingGenerator.swift in Sources */,
+				2A68FD701EE59E8A00E1E71D /* AbstractSyntaxGenerator.swift in Sources */,
+				2A68FD721EE59E8A00E1E71D /* ConsoleIO.swift in Sources */,
 				2A68FD651EE59E7200E1E71D /* main.swift in Sources */,
+				2A68FD711EE59E8A00E1E71D /* BNFCRule.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
