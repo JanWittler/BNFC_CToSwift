@@ -61,7 +61,7 @@ struct AbstractSyntaxGenerator {
         for (type, rules) in groupedRules {
             if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
                 let tokenPrinting = "extension \(type): CustomStringConvertible {" + "\n" +
-                "var description: String { return \"\\(type(of: self))(\\\"\\(value)\\\")\" }" + "\n" +
+                "var description: String { return \"\\(type(of: self))(\\(String(reflecting: value)))\" }" + "\n" +
                 "}"
                 tokenDecls.append(tokenPrinting)
             }

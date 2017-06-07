@@ -9,7 +9,7 @@
 import Foundation
 
 struct PrettyPrinter {
-    static func makePretty(_ code: String, indentation: Int = 4) -> String {
+    static func makePretty(_ code: String, indentationWidth: Int = 4) -> String {
         let lines = code.components(separatedBy: "\n")
         var indentationLevel = 0
         var code = lines.map { line -> String in
@@ -25,7 +25,7 @@ struct PrettyPrinter {
                 indentationLevel -= 1
                 indentChange += 1
             }
-            let value = String(repeating: " ", count: indentationLevel * indentation) + line
+            let value = String(repeating: " ", count: indentationLevel * indentationWidth) + line
             indentationLevel += indentChange
             //TODO: switches cases are not correctly indented
             return value
