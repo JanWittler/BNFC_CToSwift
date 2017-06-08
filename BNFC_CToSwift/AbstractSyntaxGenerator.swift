@@ -57,15 +57,29 @@ struct AbstractSyntaxGenerator {
     
     private static func generatePrinting(for groupedRules: [String : [BNFCRule]]) -> String {
         var decls = [String]()
-        var tokenDecls = [String]()
+        var tokenDecls = ["//MARK: Token helpers"]
         for (type, rules) in groupedRules {
             if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
                 let tokenPrinting = "extension \(type): CustomStringConvertible {" + "\n" +
                 "var description: String { return \"\\(type(of: self))(\\(String(reflecting: value)))\" }" + "\n" +
                 "}"
+                    
+                let tokenEquatable = "extension \(type): Equatable {" + "\n" +
+                "static func ==(lhs: \(type), rhs: \(type)) -> Bool {" + "\n" +
+                "return lhs.value == rhs.value" + "\n" +
+                "}" + "\n" +
+                "}"
+                    
+                let tokenHashable = "extension \(type): Hashable {" + "\n" +
+                "var hashValue: Int { return value.hashValue }" + "\n" +
+                "}"
                 tokenDecls.append(tokenPrinting)
+                tokenDecls.append(tokenEquatable)
+                tokenDecls.append(tokenHashable)
             }
-            decls.append("extension \(type): CustomAbstractSyntaxPrinting {" + "\n" + "}")
+            else {
+                decls.append("extension \(type): CustomAbstractSyntaxPrinting {" + "\n" + "}")
+            }
         }
         
         let customSyntaxPrinting = "protocol CustomAbstractSyntaxPrinting {" + "\n" + "}" + "\n\n" +
