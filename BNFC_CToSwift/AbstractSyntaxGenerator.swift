@@ -40,12 +40,10 @@ struct AbstractSyntaxGenerator {
                     if !rule.construction.isEmpty {
                         rCase += "(" + rule.construction.map { adjustType($0) }.joined(separator: ", ") + ")"
                     }
-                    if rule.construction.contains(type) {
-                        rCase = "indirect " + rCase
-                    }
                     cases.append(rCase)
                 }
-                let enumString = "enum \(type) {" + "\n" +
+                //TODO: not every enum requires the `indirect` flag, rather it is only required for those which can create a cycle (possibly with itself or other enums)
+                let enumString = "indirect enum \(type) {" + "\n" +
                     cases.joined(separator: "\n") + "\n" +
                     "}"
                 decls.append(enumString)
