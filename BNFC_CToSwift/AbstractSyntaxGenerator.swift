@@ -50,13 +50,6 @@ struct AbstractSyntaxGenerator {
             }
         }
         
-        //if `Ident` is never used, we can omit the custom struct declaration
-        if BNFCRule.identUsed(in: rules) {
-            let identStruct = "public struct Ident {" + "\n" +
-                "let value: String" + "\n" +
-            "}"
-            decls.append(identStruct)
-        }
         decls += generatePrinting(for: groupedRules)
         return decls.joined(separator: "\n\n")
     }
@@ -71,10 +64,6 @@ struct AbstractSyntaxGenerator {
             else {
                 decls.append("extension \(type): CustomAbstractSyntaxPrinting {" + "\n" + "}")
             }
-        }
-        
-        if BNFCRule.identUsed(in: groupedRules.values.reduce([], +)) {
-            tokenDecls += tokenHelpers(for: BNFCRule.IdentKey)
         }
         
         if !decls.isEmpty {

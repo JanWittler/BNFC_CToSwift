@@ -40,11 +40,10 @@ guard let inputFile = configuration.inputFile else {
 
 do {
     let path = CommandLine.arguments[1]
-    let content = try String(contentsOfFile: path, encoding: .utf8)
     
     print("parsing...")
     
-    let rules = try content.components(separatedBy: "\n").filter {!$0.isEmpty}.map { try BNFCRule.rules(from: $0) }.reduce([], +)
+    let rules = try BNFCRule.rules(from: path)
     let abstractSyntax = try prefix + AbstractSyntaxGenerator.generateSwift(from: rules)
     let mapping = try prefix + MappingGenerator(moduleName: configuration.moduleName)!.generateSwift(from: rules)
     
@@ -62,10 +61,10 @@ do {
     print("")
 }
 catch let AbstractSyntaxGenerator.GeneratorError.parsingFailed(message) {
-    print("parsing failed")
-    print(message)
+    print("parsing failed with message: \(message)")
     exit(-1)
 }
 catch let error {
-    
+    print("parsing failed with error: \(error)")
+    exit(-1)
 }

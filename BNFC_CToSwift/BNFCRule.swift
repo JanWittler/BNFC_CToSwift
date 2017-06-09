@@ -9,8 +9,6 @@
 import Foundation
 
 internal struct BNFCRule {
-    static var IdentKey = "Ident"
-    
     enum RuleType {
         case constructor
         case token
@@ -22,13 +20,22 @@ internal struct BNFCRule {
     private(set) var construction: [String] = []
     let ruleType: RuleType
     
-    static func rules(from string: String) throws -> [BNFCRule] {
-        let string = string.trimmingCharacters(in: .whitespaces)
-        if string.hasPrefix("rules") {
-            return try rulesFromBNFCRulesKeyword(string)
+    static func rules(from path: String) throws -> [BNFCRule] {
+        let content = try String(contentsOfFile: path, encoding: .utf8)
+        var rules = try content.components(separatedBy: "\n").filter {!$0.isEmpty}.map { try BNFCRule.rules(fromLine: $0) }.reduce([], +)
+        if BNFCRule.identUsed(in: rules) {
+            rules.append(BNFCRule(asIdent: true))
+        }
+        return rules
+    }
+    
+    private static func rules(fromLine line: String) throws -> [BNFCRule] {
+        let line = line.trimmingCharacters(in: .whitespaces)
+        if line.hasPrefix("rules") {
+            return try rulesFromBNFCRulesKeyword(line)
         }
         else {
-            if let rule = try BNFCRule(string) {
+            if let rule = try BNFCRule(line) {
                 return [rule]
             }
         }
@@ -132,6 +139,10 @@ internal struct BNFCRule {
         return construction.components(separatedBy: " ").filter { !$0.isEmpty }.map { cleanType($0) }
     }
     
+    //MARK: custom handling for `Ident`
+    //BNFC has the built-in type `Ident` which is effectively a String so we treat is as if it is a token declaration
+    
+    private static var Ident = "Ident"
     
     /**
      a helper method to check if the `Ident` key of BNFC is used in any of the given rules
@@ -139,7 +150,12 @@ internal struct BNFCRule {
        - rules: the rules to check for
      - returns: returns `true` in case the `Ident` key is used, otherwise `false`
     */
-    static func identUsed(in rules: [BNFCRule]) -> Bool {
-        return rules.reduce(false) { $0 || $1.construction.contains(BNFCRule.IdentKey) }
+    private static func identUsed(in rules: [BNFCRule]) -> Bool {
+        return rules.reduce(false) { $0 || $1.construction.contains(Ident) }
+    }
+    
+    private init(asIdent: Bool) {
+        type = BNFCRule.Ident
+        ruleType = .token
     }
 }
