@@ -12,6 +12,7 @@ internal struct BNFCRule {
     enum RuleType {
         case constructor
         case token
+        case entrypoint
     }
     
     private(set) var label: String = ""
@@ -81,10 +82,17 @@ internal struct BNFCRule {
             return nil
         }
         
-        if rule.hasPrefix("token") {
+        guard !rule.hasPrefix("token") else {
             //get token name
             type = rule.components(separatedBy: " ").filter { !$0.isEmpty }[1]
             ruleType = .token
+            return
+        }
+        
+        guard !rule.hasPrefix("entrypoints") else {
+            //get entrypoints
+            construction = rule.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            ruleType = .entrypoint
             return
         }
         
