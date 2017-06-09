@@ -26,8 +26,8 @@ struct AbstractSyntaxGenerator {
             var cases = [String]()
             //check for token rule
             if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
-                let structString = "struct \(type) {" + "\n" +
-                    "let value: Swift.String" + "\n" +
+                let structString = "public struct \(type) {" + "\n" +
+                    "let value: String" + "\n" +
                     "}"
                 decls.append(structString)
             }
@@ -43,7 +43,7 @@ struct AbstractSyntaxGenerator {
                     cases.append(rCase)
                 }
                 //TODO: not every enum requires the `indirect` flag, rather it is only required for those which can create a cycle (possibly with itself or other enums)
-                let enumString = "indirect enum \(type) {" + "\n" +
+                let enumString = "public indirect enum \(type) {" + "\n" +
                     cases.joined(separator: "\n") + "\n" +
                     "}"
                 decls.append(enumString)
@@ -59,17 +59,17 @@ struct AbstractSyntaxGenerator {
         for (type, rules) in groupedRules {
             if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
                 let tokenPrinting = "extension \(type): CustomStringConvertible {" + "\n" +
-                "var description: String { return \"\\(type(of: self))(\\(String(reflecting: value)))\" }" + "\n" +
+                "public var description: String { return \"\\(type(of: self))(\\(String(reflecting: value)))\" }" + "\n" +
                 "}"
                     
                 let tokenEquatable = "extension \(type): Equatable {" + "\n" +
-                "static func ==(lhs: \(type), rhs: \(type)) -> Bool {" + "\n" +
+                "public static func ==(lhs: \(type), rhs: \(type)) -> Bool {" + "\n" +
                 "return lhs.value == rhs.value" + "\n" +
                 "}" + "\n" +
                 "}"
                     
                 let tokenHashable = "extension \(type): Hashable {" + "\n" +
-                "var hashValue: Int { return value.hashValue }" + "\n" +
+                "public var hashValue: Int { return value.hashValue }" + "\n" +
                 "}"
                 tokenDecls.append(tokenPrinting)
                 tokenDecls.append(tokenEquatable)
@@ -80,9 +80,9 @@ struct AbstractSyntaxGenerator {
             }
         }
         
-        let customSyntaxPrinting = "protocol CustomAbstractSyntaxPrinting {" + "\n" + "}" + "\n\n" +
-        "extension CustomAbstractSyntaxPrinting {" + "\n" +
-        "func show() -> String {" + "\n" +
+        let customSyntaxPrinting = "public protocol CustomAbstractSyntaxPrinting {" + "\n" + "}" + "\n\n" +
+        "public extension CustomAbstractSyntaxPrinting {" + "\n" +
+        "public func show() -> String {" + "\n" +
         "let description = String(reflecting: self)" + "\n" +
         "let moduleName = description.components(separatedBy: \".\").first!" + "\n" +
         "return description.replacingOccurrences(of: \"\\(moduleName).\", with: \"\")" + "\n" +
@@ -96,16 +96,16 @@ struct AbstractSyntaxGenerator {
     
     private static func adjustType(_ type: String) -> String {
         if type == "Integer" {
-            return "Swift.Int"
+            return "Int"
         }
         else if type == "Double" {
-            return "Swift.Double"
+            return "Double"
         }
         else if type == "String" {
-            return "Swift.String"
+            return "String"
         }
         else if type == "Char" {
-            return "Swift.Character"
+            return "Character"
         }
         else if type == "Ident" {
             //TODO: handle bnfc `Ident` type correctly
