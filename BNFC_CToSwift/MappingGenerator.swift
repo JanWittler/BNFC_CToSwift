@@ -46,8 +46,12 @@ struct MappingGenerator {
             }
             return singleMapping
         }
-        mappings.append(generateTokenMapping(for: rules))
+        mappings += generateTokenMapping(for: rules)
         mappings += defaultTypeMapping()
+        //if Ident is never used, we will not generate a struct for it thus we should not add its mapping
+        if BNFCRule.identUsed(in: rules) {
+            mappings.append(identTypeMapping())
+        }
         
         let prefix = ["import \(moduleName)",
             generateParseFileFunction(for: rules),
@@ -111,9 +115,12 @@ struct MappingGenerator {
         return accessor
     }
     
-    private func generateTokenMapping(for rules: [BNFCRule]) -> String {
-        let mappings = rules.filter { $0.ruleType == .token }.map { generateTokenMapping(for: $0) }.joined(separator: "\n\n")
-        return "//MARK:- tokens" + "\n\n" + mappings
+    private func generateTokenMapping(for rules: [BNFCRule]) -> [String] {
+        let mappings = rules.filter { $0.ruleType == .token }.map { generateTokenMapping(for: $0) }
+        if mappings.isEmpty {
+            return []
+        }
+        return ["//MARK:- tokens"] + mappings
     }
     
     private func generateTokenMapping(for rule: BNFCRule) -> String {
@@ -148,11 +155,13 @@ struct MappingGenerator {
         "}",
         "private func visitString(_ pString: \(moduleName).String) -> Swift.String {" + "\n" +
         "return String(cString: pString)" + "\n" +
-        "}",
-        "private func visitIdent(_ pIdent: \(moduleName).Ident) {" + "\n" +
-        "//TODO: ident handling missing" + "\n" +
-        //TODO: ident handling missing
         "}"]
+    }
+    
+    private func identTypeMapping() -> String {
+        return "private func visitIdent(_ pIdent: \(moduleName).Ident) -> Ident {" + "\n" +
+        "return Ident(value: Swift.String(cString: pIdent))" + "\n" +
+        "}"
     }
     
     private func generateParseFileFunction(for rules: [BNFCRule]) -> String {

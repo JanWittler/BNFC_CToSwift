@@ -48,50 +48,71 @@ struct AbstractSyntaxGenerator {
                     "}"
                 decls.append(enumString)
             }
-            
         }
-        return decls.joined(separator: "\n\n") + "\n\n" + generatePrinting(for: groupedRules)
+        
+        //if `Ident` is never used, we can omit the custom struct declaration
+        if BNFCRule.identUsed(in: rules) {
+            let identStruct = "public struct Ident {" + "\n" +
+                "let value: String" + "\n" +
+            "}"
+            decls.append(identStruct)
+        }
+        decls += generatePrinting(for: groupedRules)
+        return decls.joined(separator: "\n\n")
     }
     
-    private static func generatePrinting(for groupedRules: [String : [BNFCRule]]) -> String {
+    private static func generatePrinting(for groupedRules: [String : [BNFCRule]]) -> [String] {
         var decls = [String]()
-        var tokenDecls = ["//MARK: Token helpers"]
+        var tokenDecls = [String]()
         for (type, rules) in groupedRules {
             if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
-                let tokenPrinting = "extension \(type): CustomStringConvertible {" + "\n" +
-                "public var description: String { return \"\\(type(of: self))(\\(String(reflecting: value)))\" }" + "\n" +
-                "}"
-                    
-                let tokenEquatable = "extension \(type): Equatable {" + "\n" +
-                "public static func ==(lhs: \(type), rhs: \(type)) -> Bool {" + "\n" +
-                "return lhs.value == rhs.value" + "\n" +
-                "}" + "\n" +
-                "}"
-                    
-                let tokenHashable = "extension \(type): Hashable {" + "\n" +
-                "public var hashValue: Int { return value.hashValue }" + "\n" +
-                "}"
-                tokenDecls.append(tokenPrinting)
-                tokenDecls.append(tokenEquatable)
-                tokenDecls.append(tokenHashable)
+                tokenDecls += tokenHelpers(for: type)
             }
             else {
                 decls.append("extension \(type): CustomAbstractSyntaxPrinting {" + "\n" + "}")
             }
         }
         
-        let customSyntaxPrinting = "public protocol CustomAbstractSyntaxPrinting {" + "\n" + "}" + "\n\n" +
-        "public extension CustomAbstractSyntaxPrinting {" + "\n" +
-        "public func show() -> String {" + "\n" +
-        "let description = String(reflecting: self)" + "\n" +
-        "let moduleName = description.components(separatedBy: \".\").first!" + "\n" +
-        "return description.replacingOccurrences(of: \"\\(moduleName).\", with: \"\")" + "\n" +
-        "}" + "\n" +
+        if BNFCRule.identUsed(in: groupedRules.values.reduce([], +)) {
+            tokenDecls += tokenHelpers(for: BNFCRule.IdentKey)
+        }
+        
+        if !decls.isEmpty {
+            let customSyntaxPrinting = "public protocol CustomAbstractSyntaxPrinting {" + "\n" + "}" + "\n\n" +
+                "public extension CustomAbstractSyntaxPrinting {" + "\n" +
+                "public func show() -> String {" + "\n" +
+                "let description = String(reflecting: self)" + "\n" +
+                "let moduleName = description.components(separatedBy: \".\").first!" + "\n" +
+                "return description.replacingOccurrences(of: \"\\(moduleName).\", with: \"\")" + "\n" +
+                "}" + "\n" +
+            "}"
+            
+            decls.insert("//MARK:- custom printing", at: 0)
+            decls.insert(customSyntaxPrinting, at: 1)
+        }
+        
+        if !tokenDecls.isEmpty {
+            tokenDecls.insert("//MARK: Token helpers", at: 0)
+        }
+        
+        return (decls + tokenDecls)
+    }
+    
+    private static func tokenHelpers(for type: String) -> [String] {
+        let tokenPrinting = "extension \(type): CustomStringConvertible {" + "\n" +
+            "public var description: String { return \"\\(type(of: self))(\\(String(reflecting: value)))\" }" + "\n" +
         "}"
         
-        decls.insert("//MARK:- custom printing", at: 0)
-        decls.insert(customSyntaxPrinting, at: 1)
-        return (decls + tokenDecls).joined(separator: "\n\n")
+        let tokenEquatable = "extension \(type): Equatable {" + "\n" +
+            "public static func ==(lhs: \(type), rhs: \(type)) -> Bool {" + "\n" +
+            "return lhs.value == rhs.value" + "\n" +
+            "}" + "\n" +
+        "}"
+        
+        let tokenHashable = "extension \(type): Hashable {" + "\n" +
+            "public var hashValue: Int { return value.hashValue }" + "\n" +
+        "}"
+        return [tokenPrinting, tokenEquatable, tokenHashable]
     }
     
     private static func adjustType(_ type: String) -> String {
@@ -106,9 +127,6 @@ struct AbstractSyntaxGenerator {
         }
         else if type == "Char" {
             return "Character"
-        }
-        else if type == "Ident" {
-            //TODO: handle bnfc `Ident` type correctly
         }
         return type
     }

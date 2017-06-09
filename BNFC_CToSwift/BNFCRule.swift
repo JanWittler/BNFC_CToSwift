@@ -9,6 +9,8 @@
 import Foundation
 
 internal struct BNFCRule {
+    static var IdentKey = "Ident"
+    
     enum RuleType {
         case constructor
         case token
@@ -128,5 +130,16 @@ internal struct BNFCRule {
         //filter out constants
         let construction = pConstruction.components(separatedBy: "\"").enumerated().flatMap { $0.0 % 2 == 0 ? $0.element : nil }.joined(separator: " ")
         return construction.components(separatedBy: " ").filter { !$0.isEmpty }.map { cleanType($0) }
+    }
+    
+    
+    /**
+     a helper method to check if the `Ident` key of BNFC is used in any of the given rules
+     - parameters:
+       - rules: the rules to check for
+     - returns: returns `true` in case the `Ident` key is used, otherwise `false`
+    */
+    static func identUsed(in rules: [BNFCRule]) -> Bool {
+        return rules.reduce(false) { $0 || $1.construction.contains(BNFCRule.IdentKey) }
     }
 }
