@@ -45,13 +45,14 @@ struct MappingGenerator {
                 return singleMapping + (singleMapping.isEmpty ? "" : "\n\n") + generateListMapping(for: type)
             }
             return singleMapping
-            }
+        }
         mappings.append(generateTokenMapping(for: rules))
-        mappings.append(defaultTypeMapping())
-        mappings.insert("import \(moduleName)", at: 0)
-        mappings.insert("struct \(moduleName)ToSwiftBridge {", at: 1)
-        mappings.append("}")
-        return mappings.joined(separator: "\n\n")
+        mappings += defaultTypeMapping()
+        
+        let prefix = ["import \(moduleName)",
+            generateParseFileFunction(for: rules),
+            "//MARK: C to Swift mapping"]
+        return (prefix + mappings).joined(separator: "\n\n")
     }
     
     private func generateMapping(for rules: [BNFCRule], ofType type: String) throws -> String {
@@ -72,7 +73,7 @@ struct MappingGenerator {
         
         //<x>.Type is a reserved keyword in swift and thus must be escaped
         let paramType = type == "Type" ? "`\(type)`" : type
-        return "func visit\(type)(_ pValue: \(moduleName).\(paramType)) -> \(type) {" + "\n" +
+        return "private func visit\(type)(_ pValue: \(moduleName).\(paramType)) -> \(type) {" + "\n" +
         "let value = pValue.pointee" + "\n" + "switch value.kind {" + "\n" +
         switchBody + "\n" +
         "}" + "\n}"
@@ -117,13 +118,13 @@ struct MappingGenerator {
     
     private func generateTokenMapping(for rule: BNFCRule) -> String {
         let type = rule.type
-        return "func visit\(type)(_ pValue: \(moduleName).\(type)) -> \(type) {" + "\n" +
+        return "private func visit\(type)(_ pValue: \(moduleName).\(type)) -> \(type) {" + "\n" +
         "return \(type)(value: String(cString: pValue))" + "\n" +
         "}"
     }
     
     private func generateListMapping(for type: String) -> String {
-        return "func visitList\(type)(_ pValue: \(moduleName).List\(type)?) -> [\(type)] {" + "\n" +
+        return "private func visitList\(type)(_ pValue: \(moduleName).List\(type)?) -> [\(type)] {" + "\n" +
         "guard let value = pValue?.pointee else {" + "\n" +
         "return []" + "\n" +
         "}" + "\n" +
@@ -134,23 +135,43 @@ struct MappingGenerator {
         "}"
     }
     
-    private func defaultTypeMapping() -> String {
-        return "//MARK:- default types" + "\n\n" +
-        "func visitInteger(_ pInteger: \(moduleName).Integer) -> Swift.Int {" + "\n" +
+    private func defaultTypeMapping() -> [String] {
+        return ["//MARK:- default types",
+        "private func visitInteger(_ pInteger: \(moduleName).Integer) -> Swift.Int {" + "\n" +
         "return Swift.Int(pInteger)" + "\n" +
-        "}" + "\n\n" +
-        "func visitDouble(_ pDouble: \(moduleName).Double) -> Swift.Double {" + "\n" +
+        "}",
+        "private func visitDouble(_ pDouble: \(moduleName).Double) -> Swift.Double {" + "\n" +
         "return pDouble" + "\n" +
-        "}" + "\n\n" +
-        "func visitChar(_ pChar: \(moduleName).Char) -> Swift.Character {" + "\n" +
+        "}",
+        "private func visitChar(_ pChar: \(moduleName).Char) -> Swift.Character {" + "\n" +
         "return Swift.Character(Swift.UnicodeScalar(Swift.Int(pChar))!)" + "\n" +
-        "}" + "\n\n" +
-        "func visitString(_ pString: \(moduleName).String) -> Swift.String {" + "\n" +
+        "}",
+        "private func visitString(_ pString: \(moduleName).String) -> Swift.String {" + "\n" +
         "return String(cString: pString)" + "\n" +
-        "}" + "\n\n" +
-        "func visitIdent(_ pIdent: \(moduleName).Ident) {" + "\n" +
+        "}",
+        "private func visitIdent(_ pIdent: \(moduleName).Ident) {" + "\n" +
         "//TODO: ident handling missing" + "\n" +
         //TODO: ident handling missing
+        "}"]
+    }
+    
+    private func generateParseFileFunction(for rules: [BNFCRule]) -> String {
+        let entrypointRules = rules.filter { $0.ruleType == .entrypoint }.map { $0.construction }.joined()
+        guard entrypointRules.count < 2 else {
+            print("multiple entrypoints are not supported")
+            exit(-1)
+        }
+        //if `entrypoints` key not specified, bnfc used by default the type of the first rule
+        guard let entrypointType = entrypointRules.first ?? rules.first?.type else {
+            print("no rules specified")
+            return ""
+        }
+        
+        return "public func parseFile(at path: Swift.String) -> \(entrypointType)? {" + "\n" +
+        "if let file = fopen(CommandLine.arguments[1], \"r\"), let cTree = \(moduleName).pProgram(file) {" + "\n" +
+        "return visit\(entrypointType)(cTree)" + "\n" +
+        "}" + "\n" +
+        "return nil" + "\n" +
         "}"
     }
     
