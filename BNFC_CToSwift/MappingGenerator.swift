@@ -69,7 +69,7 @@ struct MappingGenerator {
             "return \($1)"
         }.joined(separator: "\n") + ("\n" +
         "default:" + "\n" +
-        "print(\"Error: bad `kind` field when printing `\(type)`!\")\nexit(1)")
+        "print(\"Error: bad `kind` field when bridging `\(type)` to Swift!\")\nexit(1)")
         
         //<x>.Type is a reserved keyword in swift and thus must be escaped
         let paramType = type == "Type" ? "`\(type)`" : type
