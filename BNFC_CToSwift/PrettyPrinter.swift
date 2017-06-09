@@ -25,9 +25,14 @@ struct PrettyPrinter {
                 indentationLevel -= 1
                 indentChange += 1
             }
-            let value = String(repeating: " ", count: indentationLevel * indentationWidth) + line
+            
+            //switch case or default
+            var tempChange = 0
+            if (line.hasPrefix("case") && line.hasSuffix(":")) || line.hasPrefix("default:") {
+                tempChange = -1
+            }
+            let value = String(repeating: " ", count: (indentationLevel + tempChange) * indentationWidth) + line
             indentationLevel += indentChange
-            //TODO: switches cases are not correctly indented
             return value
         }.joined(separator: "\n")
         
