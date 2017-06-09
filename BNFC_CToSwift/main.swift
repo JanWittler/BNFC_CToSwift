@@ -51,7 +51,7 @@ do {
     print("parsing successful\n")
     
     var outputFiles = [("AbstractSyntax.swift", abstractSyntax),
-                       ("\(configuration.moduleName)ToSwiftBridge.swift", mapping)]
+                       ("Parser.swift", mapping)]
     var success = outputFiles.reduce(true) {
         $0 && printFile($1.1, to: URL(fileURLWithPath: $1.0, relativeTo: configuration.outputPath))
     }
