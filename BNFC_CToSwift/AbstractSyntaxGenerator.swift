@@ -27,7 +27,11 @@ struct AbstractSyntaxGenerator {
             //check for token rule
             if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
                 let structString = "public struct \(type) {" + "\n" +
-                    "let value: String" + "\n" +
+                    "public let value: String" + "\n" +
+                    "\n" +
+                    "public init(_ value: String) {" + "\n" +
+                    "self.value = value" + "\n"
+                    + "}" +
                     "}"
                 decls.append(structString)
             }
@@ -42,7 +46,8 @@ struct AbstractSyntaxGenerator {
                     }
                     cases.append(rCase)
                 }
-                //TODO: not every enum requires the `indirect` flag, rather it is only required for those which can create a cycle (possibly with itself or other enums)
+                //TODO: not every enum requires the `indirect` flag
+                // rather it is only required for those which can create a cycle (possibly with itself or other enums)
                 let enumString = "public indirect enum \(type) {" + "\n" +
                     cases.joined(separator: "\n") + "\n" +
                     "}"

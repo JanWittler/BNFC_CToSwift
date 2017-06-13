@@ -122,7 +122,7 @@ struct MappingGenerator {
     private func generateTokenMapping(for rule: BNFCRule) -> String {
         let type = rule.type
         return "private func visit\(type)(_ pValue: \(moduleName).\(type)) -> \(type) {" + "\n" +
-        "return \(type)(value: String(cString: pValue))" + "\n" +
+        "return \(type)(String(cString: pValue))" + "\n" +
         "}"
     }
     
