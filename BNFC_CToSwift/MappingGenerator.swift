@@ -167,7 +167,7 @@ struct MappingGenerator {
         }
         
         return "public func parseFile(at path: Swift.String) -> \(entrypointType)? {" + "\n" +
-        "if let file = fopen(CommandLine.arguments[1], \"r\") {" + "\n" +
+        "if let file = fopen(path, \"r\") {" + "\n" +
         "defer { fclose(file) }" + "\n" +
         "if let cTree = \(moduleName).p\(entrypointType)(file) {" + "\n" +
         "return visit\(entrypointType)(cTree)" + "\n" +
