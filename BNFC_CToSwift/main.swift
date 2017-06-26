@@ -45,7 +45,7 @@ do {
     
     let rules = try BNFCRule.rules(from: path)
     let abstractSyntax = try prefix + AbstractSyntaxGenerator.generateSwift(from: rules)
-    let mapping = try prefix + MappingGenerator(moduleName: configuration.moduleName)!.generateSwift(from: rules)
+    let mapping = prefix + MappingGenerator(moduleName: configuration.moduleName)!.generateSwift(from: rules)
     
     print("parsing successful\n")
     

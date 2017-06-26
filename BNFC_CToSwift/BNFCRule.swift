@@ -8,23 +8,16 @@
 
 import Foundation
 
-internal struct BNFCRule {
-    enum RuleType {
-        case constructor
-        case token
-        case entrypoint
-    }
-    
-    private(set) var label: String = ""
-    private(set) var type: String = ""
-    private(set) var construction: [String] = []
-    let ruleType: RuleType
+internal enum BNFCRule {
+    case constructor(label: String, type: String, construction: [String])
+    case token(type: String)
+    case entrypoint(types: [String])
     
     static func rules(from path: String) throws -> [BNFCRule] {
         let content = try String(contentsOfFile: path, encoding: .utf8)
         var rules = try content.components(separatedBy: "\n").filter {!$0.isEmpty}.map { try BNFCRule.rules(fromLine: $0) }.reduce([], +)
         if BNFCRule.identUsed(in: rules) {
-            rules.append(BNFCRule(asIdent: true))
+            rules.append(identToken())
         }
         return rules
     }
@@ -93,29 +86,28 @@ internal struct BNFCRule {
         
         guard !rule.hasPrefix("token") else {
             //get token name
-            type = rule.components(separatedBy: " ").filter { !$0.isEmpty }[1]
-            ruleType = .token
+            let type = BNFCRule.cleanType(rule.components(separatedBy: " ").filter { !$0.isEmpty }[1])
+            self = .token(type: type)
             return
         }
         
         guard !rule.hasPrefix("entrypoints") else {
             //get entrypoints
-            construction = rule.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            ruleType = .entrypoint
+            let types = rule.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.map { BNFCRule.cleanType($0) }
+            self = .entrypoint(types: types)
             return
         }
         
         guard let dotLocation = rule.range(of: "."), let declLocation = rule.range(of: "::=") else {
             throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("invalid rule: \(rule)")
         }
-        ruleType = .constructor
-        label = cleanLabel(rule.substring(to: dotLocation.lowerBound))
-        type  = cleanType(rule.substring(to: declLocation.lowerBound).substring(from: dotLocation.upperBound))
-        construction = cleanConstruction(rule.substring(from: declLocation.upperBound))
-        
+        let label = BNFCRule.cleanLabel(rule.substring(to: dotLocation.lowerBound))
+        let type  = BNFCRule.cleanType(rule.substring(to: declLocation.lowerBound).substring(from: dotLocation.upperBound))
+        let construction = BNFCRule.cleanConstruction(rule.substring(from: declLocation.upperBound))
+        self = .constructor(label: label, type: type, construction: construction)
     }
     
-    private func cleanLabel(_ pLabel: String) -> String {
+    private static func cleanLabel(_ pLabel: String) -> String {
         var label = pLabel.trimmingCharacters(in: .whitespaces)
         //remove leading `internal`
         if let internalRange = label.range(of: "internal"), internalRange.lowerBound == label.startIndex {
@@ -124,7 +116,7 @@ internal struct BNFCRule {
         return label
     }
     
-    private func cleanType(_ pType: String) -> String {
+    private static func cleanType(_ pType: String) -> String {
         var type = pType.trimmingCharacters(in: .whitespaces)
         //remove trailing decimals since they are used for precedence and don't affect the type
         while String(type.characters.last!).rangeOfCharacter(from: .decimalDigits) != nil {
@@ -133,29 +125,39 @@ internal struct BNFCRule {
         return type
     }
     
-    private func cleanConstruction(_ pConstruction: String) -> [String] {
+    private static func cleanConstruction(_ pConstruction: String) -> [String] {
         //filter out constants
         let construction = pConstruction.components(separatedBy: "\"").enumerated().flatMap { $0.0 % 2 == 0 ? $0.element : nil }.joined(separator: " ")
         return construction.components(separatedBy: " ").filter { !$0.isEmpty }.map { cleanType($0) }
     }
     
-    //MARK: custom handling for `Ident`
-    //BNFC has the built-in type `Ident` which is effectively a String so we treat is as if it is a token declaration
+    //MARK:- custom handling for `Ident`
+    //BNFC has the built-in type `Ident` which is effectively a String so we treat it as if it is a token declaration
     
     private static var Ident = "Ident"
     
     /**
      a helper method to check if the `Ident` key of BNFC is used in any of the given rules
      - parameters:
-       - rules: the rules to check for
+     - rules: the rules to check for
      - returns: returns `true` in case the `Ident` key is used, otherwise `false`
-    */
+     */
     private static func identUsed(in rules: [BNFCRule]) -> Bool {
-        return rules.reduce(false) { $0 || $1.construction.contains(Ident) }
+        return rules.reduce(false) { previous, rule in
+            let containsIdent: Bool
+            switch rule {
+            case let .constructor(label: _, type: _, construction: construction):
+                containsIdent = construction.contains(Ident)
+            case let .entrypoint(types: types):
+                containsIdent = types.contains(Ident)
+            case .token(type: _):
+                containsIdent = false
+            }
+            return previous || containsIdent
+        }
     }
     
-    private init(asIdent: Bool) {
-        type = BNFCRule.Ident
-        ruleType = .token
+    private static func identToken() -> BNFCRule {
+        return .token(type: Ident)
     }
 }

@@ -14,64 +14,71 @@ struct AbstractSyntaxGenerator {
     }
     
     static func generateSwift(from rules: [BNFCRule]) throws -> String {
-        var groupedRules = [String : [BNFCRule]]()
-        for rule in rules {
-            var group = groupedRules[rule.type] ?? []
-            group.append(rule)
-            groupedRules[rule.type] = group
+        var tokens = Set<String>()
+        var constructors = [String : [(String, [String])]]()
+        
+        rules.forEach {
+            switch $0 {
+            case let .constructor(label: label, type: type, construction: construction):
+                var rules = constructors[type] ?? []
+                rules.append((label, construction))
+                constructors[type] = rules
+            case let .token(type: type):
+                tokens.insert(type)
+            case .entrypoint(types: _):
+                break
+            }
         }
         
-        var decls = [String]()
-        for (type, rules) in groupedRules {
+        var output = [String]()
+        output += tokens.map {
+            "public struct \($0) {" + "\n" +
+            "public let value: String" + "\n" +
+            "\n" +
+            "public init(_ value: String) {" + "\n" +
+            "self.value = value" + "\n"
+            + "}" + "\n" +
+            "}"
+        }
+        
+        for (type, rules) in constructors {
             var cases = [String]()
-            //check for token rule
-            if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
-                let structString = "public struct \(type) {" + "\n" +
-                    "public let value: String" + "\n" +
-                    "\n" +
-                    "public init(_ value: String) {" + "\n" +
-                    "self.value = value" + "\n"
-                    + "}" +
-                    "}"
-                decls.append(structString)
-            }
-            else {
-                for rule in rules {
-                    guard rule.ruleType == .constructor else {
-                        throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("unhandled case where token type `\(type)` is present in another rule")
-                    }
-                    var rCase = "case \(enumCaseFromLabel(rule.label))"
-                    if !rule.construction.isEmpty {
-                        rCase += "(" + rule.construction.map { adjustType($0) }.joined(separator: ", ") + ")"
-                    }
-                    cases.append(rCase)
+            for (label, construction) in rules {
+                var rCase = "case \(enumCaseFromLabel(label))"
+                if !construction.isEmpty {
+                    rCase += "(" + construction.map { adjustType($0) }.joined(separator: ", ") + ")"
                 }
-                //TODO: not every enum requires the `indirect` flag
-                // rather it is only required for those which can create a cycle (possibly with itself or other enums)
-                let enumString = "public indirect enum \(type) {" + "\n" +
-                    cases.joined(separator: "\n") + "\n" +
-                    "}"
-                decls.append(enumString)
+                cases.append(rCase)
             }
+            //TODO: not every enum requires the `indirect` flag
+            // rather it is only required for those which can create a cycle (possibly with itself or other enums)
+            let enumString = "public indirect enum \(type) {" + "\n" +
+                cases.joined(separator: "\n") + "\n" +
+            "}"
+            output.append(enumString)
         }
         
-        decls += generatePrinting(for: groupedRules)
-        return decls.joined(separator: "\n\n")
+        output += generatePrinting(for: rules)
+        return output.joined(separator: "\n\n")
     }
     
-    private static func generatePrinting(for groupedRules: [String : [BNFCRule]]) -> [String] {
-        var decls = [String]()
-        var tokenDecls = [String]()
-        for (type, rules) in groupedRules {
-            if let rule = rules.first, rules.count == 1, rule.ruleType == .token {
-                tokenDecls += tokenHelpers(for: type)
-            }
-            else {
-                decls.append("extension \(type): CustomAbstractSyntaxPrinting {" + "\n" + "}")
+    private static func generatePrinting(for rules: [BNFCRule]) -> [String] {
+        var tokens = Set<String>()
+        var types = Set<String>()
+        rules.forEach {
+            switch $0 {
+            case let .constructor(label: _, type: type, construction: _):
+                types.insert(type)
+            case let .token(type: type):
+                tokens.insert(type)
+                types.insert(type)
+            case .entrypoint(types: _):
+                break
             }
         }
         
-        if !decls.isEmpty {
+        var output = [String]()
+        if !types.isEmpty {
             let customSyntaxPrinting = "public protocol CustomAbstractSyntaxPrinting {" + "\n" + "}" + "\n\n" +
                 "public extension CustomAbstractSyntaxPrinting {" + "\n" +
                 "public func show() -> String {" + "\n" +
@@ -81,15 +88,18 @@ struct AbstractSyntaxGenerator {
                 "}" + "\n" +
             "}"
             
-            decls.insert("//MARK:- custom printing", at: 0)
-            decls.insert(customSyntaxPrinting, at: 1)
+            output.append("//MARK:- custom printing")
+            output.append(customSyntaxPrinting)
         }
         
-        if !tokenDecls.isEmpty {
-            tokenDecls.insert("//MARK: Token helpers", at: 0)
+        output += types.map { "extension \($0): CustomAbstractSyntaxPrinting {" + "\n" + "}" }
+        
+        if !tokens.isEmpty {
+            output.append("//MARK: Token helpers")
         }
         
-        return (decls + tokenDecls)
+        output += tokens.map { tokenHelpers(for: $0) }.reduce([], +)
+        return output
     }
     
     private static func tokenHelpers(for type: String) -> [String] {

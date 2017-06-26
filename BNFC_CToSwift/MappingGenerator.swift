@@ -11,10 +11,6 @@ import Foundation
 struct MappingGenerator {
     let moduleName: String
     
-    enum GeneratorError: Error {
-        case parsingFailed(String)
-    }
-    
     init?(moduleName: String) {
         guard !moduleName.isEmpty else {
             print("module name must not be empty")
@@ -23,47 +19,66 @@ struct MappingGenerator {
         self.moduleName = moduleName
     }
     
-    func generateSwift(from rules: [BNFCRule]) throws -> String {
-        var groupedRules = [String : [BNFCRule]]()
-        for rule in rules {
-            var group = groupedRules[rule.type] ?? []
-            group.append(rule)
-            groupedRules[rule.type] = group
+    func generateSwift(from rules: [BNFCRule]) -> String {
+        var tokens = Set<String>()
+        var constructors = [String : [(String, [String])]]()
+        
+        rules.forEach {
+            switch $0 {
+            case let .constructor(label: label, type: type, construction: construction):
+                var rules = constructors[type] ?? []
+                rules.append((label, construction))
+                constructors[type] = rules
+            case let .token(type: type):
+                tokens.insert(type)
+            case .entrypoint(types: _):
+                break
+            }
         }
         
         //check for each type if the list version of it (`[type]`) is used in any rule, this requires an additional generated method
-        let listTypeIsUsed = groupedRules.keys.reduce([String : Bool]()) { (dict, type) in
-            let listUsed = rules.reduce(false, { $0 || $1.construction.contains("[\(type)]")})
-            var newDict = dict
-            newDict[type] = listUsed
-            return newDict
+        let listTypeIsUsed = constructors.keys.reduce([String : Bool]()) { (previous, type) in
+            let listUsed = rules.reduce(false, {
+                let usedInCurrentRule: Bool
+                let listType = "[\(type)]"
+                switch $1 {
+                case let .constructor(label: _, type: _, construction: construction):
+                    usedInCurrentRule = construction.contains(listType)
+                case .token(type: _):
+                    usedInCurrentRule = false
+                case let .entrypoint(types: types):
+                    usedInCurrentRule = types.contains(listType)
+                }
+                return $0 || usedInCurrentRule
+            })
+            var result = previous
+            result[type] = listUsed
+            return result
         }
         
-        var mappings = try groupedRules.map { (type, rules) -> String in
-            let singleMapping = try generateMapping(for: rules, ofType: type)
-            if listTypeIsUsed[type] ?? false {
-                return singleMapping + (singleMapping.isEmpty ? "" : "\n\n") + generateListMapping(for: type)
+        var output = [String]()
+        
+        output += constructors.map {
+            var mappings = [generateMapping(forType: $0, withLabelsAndConstructions: $1)]
+            if listTypeIsUsed[$0] ?? false {
+                mappings.append(generateListMapping(for: $0))
             }
-            return singleMapping
-        }
-        mappings += generateTokenMapping(for: rules)
-        mappings += defaultTypeMapping()
+            return mappings
+        }.reduce([], +)
         
-        let prefix = ["import \(moduleName)",
-            generateParseFileFunction(for: rules),
-            "//MARK: C to Swift mapping"]
-        return (prefix + mappings).joined(separator: "\n\n")
+        if !tokens.isEmpty {
+            output.append("//MARK:- tokens")
+            output += tokens.map { generateTokenMapping(forType: $0) }
+        }
+        
+        output += defaultTypeMapping()
+        
+        let prefix = ["import \(moduleName)"] + generateParseFileFunctions(for: rules) + ["//MARK: C to Swift mapping"]
+        return (prefix + output).joined(separator: "\n\n")
     }
     
-    private func generateMapping(for rules: [BNFCRule], ofType type: String) throws -> String {
-        guard rules.filter({ $0.type != type }).isEmpty else {
-            throw MappingGenerator.GeneratorError.parsingFailed("rules wrong grouped\nrules: \(rules)")
-        }
-        guard rules.reduce(true, { $0 && $1.ruleType == .constructor }) else {
-            return ""
-        }
-        
-        let returns = try rules.enumerated().map { ($0, try generateReturnStatement(for: $1)) }
+    private func generateMapping(forType type: String, withLabelsAndConstructions labelsAndConstructions: [(String, [String])]) -> String {
+        let returns = labelsAndConstructions.enumerated().map { ($0, generateReturnStatement(forLabel: $1.0, andConstruction: $1.1)) }
         let switchBody = returns.map {
             "case \($0):" + "\n" +
             "return \($1)"
@@ -74,18 +89,19 @@ struct MappingGenerator {
         //<x>.Type is a reserved keyword in swift and thus must be escaped
         let paramType = type == "Type" ? "`\(type)`" : type
         return "private func visit\(type)(_ pValue: \(moduleName).\(paramType)) -> \(type) {" + "\n" +
-        "let value = pValue.pointee" + "\n" + "switch value.kind {" + "\n" +
-        switchBody + "\n" +
-        "}" + "\n}"
+            "let value = pValue.pointee" + "\n" +
+            "switch value.kind {" + "\n" +
+            switchBody + "\n" +
+            "}" + "\n}"
     }
     
-    private func generateReturnStatement(for rule: BNFCRule) throws -> String {
-        let enumCase = AbstractSyntaxGenerator.enumCaseFromLabel(rule.label)
-        let accessorPrefix = "value.u.\(rule.label.lowercased())_."
+    private func generateReturnStatement(forLabel label: String, andConstruction construction: [String]) -> String {
+        let enumCase = AbstractSyntaxGenerator.enumCaseFromLabel(label)
+        let accessorPrefix = "value.u.\(label.lowercased())_."
         
-        let arguments = rule.construction.enumerated().map { (index, type) -> String in
+        let arguments = construction.enumerated().map { (index, type) -> String in
             let cleanedType = typeFromListType(type)
-            return "visit" + cleanedType + "(" + accessorPrefix + cAccessorFromConstruction(rule.construction, at: index) + ")"
+            return "visit" + cleanedType + "(" + accessorPrefix + cAccessorFromConstruction(construction, at: index) + ")"
         }
         if arguments.isEmpty {
             return ".\(enumCase)"
@@ -111,16 +127,7 @@ struct MappingGenerator {
         return accessor
     }
     
-    private func generateTokenMapping(for rules: [BNFCRule]) -> [String] {
-        let mappings = rules.filter { $0.ruleType == .token }.map { generateTokenMapping(for: $0) }
-        if mappings.isEmpty {
-            return []
-        }
-        return ["//MARK:- tokens"] + mappings
-    }
-    
-    private func generateTokenMapping(for rule: BNFCRule) -> String {
-        let type = rule.type
+    private func generateTokenMapping(forType type: String) -> String {
         return "private func visit\(type)(_ pValue: \(moduleName).\(type)) -> \(type) {" + "\n" +
         "return \(type)(String(cString: pValue))" + "\n" +
         "}"
@@ -154,27 +161,39 @@ struct MappingGenerator {
         "}"]
     }
     
-    private func generateParseFileFunction(for rules: [BNFCRule]) -> String {
-        let entrypointRules = rules.filter { $0.ruleType == .entrypoint }.map { $0.construction }.joined()
-        guard entrypointRules.count < 2 else {
-            print("multiple entrypoints are not supported")
-            exit(-1)
-        }
-        //if `entrypoints` key not specified, bnfc used by default the type of the first rule
-        guard let entrypointType = entrypointRules.first ?? rules.first?.type else {
-            print("no rules specified")
-            return ""
+    private func generateParseFileFunctions(for rules: [BNFCRule]) -> [String] {
+        //get all types mentioned in entrypoint rules
+        var entrypoints = rules.flatMap { rule -> [String]? in
+            if case let .entrypoint(types: types) = rule {
+                return types
+            }
+            return nil
+        }.reduce([], +)
+        
+        if entrypoints.isEmpty {
+            //if `entrypoints` key not specified, bnfc uses by default the type of the first rule
+            guard let entrypoint = rules.flatMap({ rule -> String? in
+                if case let .constructor(label: _, type: type, construction: _) = rule {
+                    return type
+                }
+                return nil
+            }).first else {
+                return []
+            }
+            entrypoints = [entrypoint]
         }
         
-        return "public func parseFile(at path: Swift.String) -> \(entrypointType)? {" + "\n" +
-        "if let file = fopen(path, \"r\") {" + "\n" +
-        "defer { fclose(file) }" + "\n" +
-        "if let cTree = \(moduleName).p\(entrypointType)(file) {" + "\n" +
-        "return visit\(entrypointType)(cTree)" + "\n" +
-        "}" + "\n" +
-        "}" + "\n" +
-        "return nil" + "\n" +
-        "}"
+        return entrypoints.map {
+            "public func parseFile(at path: Swift.String) -> \($0)? {" + "\n" +
+            "if let file = fopen(path, \"r\") {" + "\n" +
+            "defer { fclose(file) }" + "\n" +
+            "if let cTree = \(moduleName).p\($0)(file) {" + "\n" +
+            "return visit\($0)(cTree)" + "\n" +
+            "}" + "\n" +
+            "}" + "\n" +
+            "return nil" + "\n" +
+            "}"
+        }
     }
     
     private func typeFromListType(_ type: String) -> String {
