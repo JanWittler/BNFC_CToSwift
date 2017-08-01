@@ -78,10 +78,9 @@ struct MappingGenerator {
     }
     
     private func generateMapping(forType type: String, withLabelsAndConstructions labelsAndConstructions: [(String, [String])]) -> String {
-        let returns = labelsAndConstructions.enumerated().map { ($0, generateReturnStatement(forLabel: $1.0, andConstruction: $1.1)) }
-        let switchBody = returns.map {
+        let switchBody = labelsAndConstructions.enumerated().map {
             "case \($0):" + "\n" +
-            "return \($1)"
+            "return " + generateReturnStatement(forLabel: $1.0, andConstruction: $1.1)
         }.joined(separator: "\n") + ("\n" +
         "default:" + "\n" +
         "print(\"Error: bad `kind` field when bridging `\(type)` to Swift!\")\nexit(1)")

@@ -8,13 +8,24 @@
 
 import Foundation
 
+/// A `BNFCRule` represents a rule taken from a BNFC-conforming grammar file.
 internal enum BNFCRule {
+    /// A construction rule, coming either from a labeled rule or using the `rules` keyword
     case constructor(label: String, type: String, construction: [String])
+    /// A token, created using the `token` keyword
     case token(type: String)
+    /// a entrypoint rule, created using the `entrypoints` keyword
     case entrypoint(types: [String])
     
-    static func rules(from path: String) throws -> [BNFCRule] {
-        let content = try String(contentsOfFile: path, encoding: .utf8)
+    /**
+     Parses the file at the given path into an array of `BNFCRules`, ignoring rules only relevant for parser, which includes rules starting with keywords `comment`, `terminator`, `separator` and `coercions`.
+     - parameters:
+       - path: The path at which the grammar file is located.
+     - returns: An array of `BNFCRules` constructed from the given file. This may not match the input file exactly since some rules may get changed, split or added to have a better conformance with Swift.
+     - throws: Throws an error if the file does not exists or cannot be parsed.
+     */
+    static func rules(from path: URL) throws -> [BNFCRule] {
+        let content = try String(contentsOf: path, encoding: .utf8)
         var rules = try content.components(separatedBy: "\n").filter {!$0.isEmpty}.map { try BNFCRule.rules(fromLine: $0) }.reduce([], +)
         if BNFCRule.identUsed(in: rules) {
             rules.append(identToken())
@@ -22,6 +33,12 @@ internal enum BNFCRule {
         return rules
     }
     
+    /** Returns an array of `BNFCRules` generated from a single line of the original grammar file. May return `0` to `n` rules since some rules are ignored and others are split.
+     - parameters:
+       - line: The line of the grammar file.
+     - returns: An array of `BNFCRules` generated from the input line.
+     - throws: Throws an error if the line could not be parsed.
+     */
     private static func rules(fromLine line: String) throws -> [BNFCRule] {
         let line = line.trimmingCharacters(in: .whitespaces)
         if line.hasPrefix("rules") {
@@ -35,12 +52,19 @@ internal enum BNFCRule {
         return []
     }
     
+    /**
+     Returns an array of `BNFCRules` generated from a single line of the original grammar file which must begin with the `rules` keyword. For every rule in the rules-list, an instance of `BNFCRule` is created where each rule's label matches the label that gets generated for the C abstract syntax.
+     - parameters:
+       - string: The single line of the original grammar. Must start with `rules` keyword.
+     - returns: An array of `BNFCRules` generated from the input line.
+     - throws: Throws an error if the line could not be parsed.
+    */
     private static func rulesFromBNFCRulesKeyword(_ string: String) throws -> [BNFCRule] {
         let string = string.trimmingCharacters(in: .whitespaces)
         guard let declLocation = string.range(of: "::=") else {
             throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("invalid rule: \(string)")
         }
-        guard let rulesLocation = string.range(of: "rules") else {
+        guard let rulesLocation = string.range(of: "rules"), rulesLocation.upperBound < declLocation.lowerBound else {
             print("rules method called with non-`rules` rule: \(string)")
             return []
         }
@@ -64,6 +88,12 @@ internal enum BNFCRule {
         }
     }
     
+    /**
+     Creates a new instance of a `BNFCRule` from the given rule. Does not create an instance in case the rule is only relevant for the parser, which are rules with keyword `comment`, `terminator`, `separator` and `coercions`.
+     - parameters:
+       - rule: The rule to create a `BNFCRule` from.
+     - throws: Throws an error if the rule could not be parsed.
+    */
     init?(_ rule: String) throws {
         let tempRule = rule.trimmingCharacters(in: .whitespaces)
         guard tempRule.hasSuffix(";") else {
@@ -107,6 +137,7 @@ internal enum BNFCRule {
         self = .constructor(label: label, type: type, construction: construction)
     }
     
+    /// Cleans the label string from unused keyword `internal`.
     private static func cleanLabel(_ pLabel: String) -> String {
         var label = pLabel.trimmingCharacters(in: .whitespaces)
         //remove leading `internal`
@@ -116,6 +147,7 @@ internal enum BNFCRule {
         return label
     }
     
+    /// Cleans the type string from only for parser relevant precendence numbers.
     private static func cleanType(_ pType: String) -> String {
         var type = pType.trimmingCharacters(in: .whitespaces)
         //remove trailing decimals since they are used for precedence and don't affect the type
@@ -125,6 +157,7 @@ internal enum BNFCRule {
         return type
     }
     
+    /// Filters terminals from the construction string and returns an array of all contained non-terminals in original order.
     private static func cleanConstruction(_ pConstruction: String) -> [String] {
         //filter out constants
         let construction = pConstruction.components(separatedBy: "\"").enumerated().flatMap { $0.0 % 2 == 0 ? $0.element : nil }.joined(separator: " ")
@@ -137,10 +170,10 @@ internal enum BNFCRule {
     private static var Ident = "Ident"
     
     /**
-     a helper method to check if the `Ident` key of BNFC is used in any of the given rules
+     A helper method to check if the `Ident` key of BNFC is used in any of the given rules.
      - parameters:
-     - rules: the rules to check for
-     - returns: returns `true` in case the `Ident` key is used, otherwise `false`
+       - rules: The rules to check for.
+     - returns: Returns `true` in case the `Ident` key is used, otherwise `false`.
      */
     private static func identUsed(in rules: [BNFCRule]) -> Bool {
         return rules.reduce(false) { previous, rule in

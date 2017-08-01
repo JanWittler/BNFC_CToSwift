@@ -8,13 +8,22 @@
 
 import Foundation
 
+/// Options that can be set using command line arguments.
 struct ProgramConfiguration {
+    /// The folder to which all output is written
     fileprivate(set) var outputPath: URL = URL(fileURLWithPath: "")
-    fileprivate(set) var moduleName: String = "CGrammar"
-    fileprivate(set) var inputFile: String?
+    /// The name of the module in the Xcode project to which the BNFC-generated files belong
+    fileprivate(set) var moduleName: String = "CGrammar" {
+        didSet { moduleName = moduleName.trimmingCharacters(in: .whitespaces) }
+    }
+    /// The path to the grammar file
+    fileprivate(set) var inputFile: URL?
     
 }
 
+/**
+ A helper structure to parse command line arguments into a dictionary
+ */
 struct ConsoleIO {
     static func parseCommandLineArguments() -> ProgramConfiguration {
         var i = 1
@@ -30,7 +39,7 @@ struct ConsoleIO {
                 config.moduleName = CommandLine.arguments[i]
                 
             default:
-                config.inputFile = arg
+                config.inputFile = URL(fileURLWithPath: arg)
                 
             }
             i += 1

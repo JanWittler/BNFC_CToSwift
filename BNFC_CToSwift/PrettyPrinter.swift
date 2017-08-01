@@ -8,6 +8,9 @@
 
 import Foundation
 
+/**
+ A helper structure to correctly indent generated Swift source code.
+ */
 struct PrettyPrinter {
     static func makePretty(_ code: String, indentationWidth: Int = 4) -> String {
         let lines = code.components(separatedBy: "\n")
