@@ -95,7 +95,7 @@ struct AbstractSyntaxGenerator {
         output += types.map { "extension \($0): CustomAbstractSyntaxPrinting {" + "\n" + "}" }
         
         if !tokens.isEmpty {
-            output.append("//MARK: Token helpers")
+            output.append("//MARK:- Token helpers")
         }
         
         output += tokens.map { tokenHelpers(for: $0) }.reduce([], +)

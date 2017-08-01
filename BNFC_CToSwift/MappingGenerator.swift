@@ -73,7 +73,7 @@ struct MappingGenerator {
         
         output += defaultTypeMapping()
         
-        let prefix = ["import \(moduleName)"] + generateParseFileFunctions(for: rules) + ["//MARK: C to Swift mapping"]
+        let prefix = ["import \(moduleName)"] + generateParseFileFunctions(for: rules) + ["//MARK:- C to Swift mapping"]
         return (prefix + output).joined(separator: "\n\n")
     }
     
