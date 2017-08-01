@@ -9,11 +9,7 @@
 import Foundation
 
 struct AbstractSyntaxGenerator {
-    enum GeneratorError: Error {
-        case parsingFailed(String)
-    }
-    
-    static func generateSwift(from rules: [BNFCRule]) throws -> String {
+    static func generateSwift(from rules: [BNFCRule]) -> String {
         var tokens = Set<String>()
         var constructors = [String : [(String, [String])]]()
         

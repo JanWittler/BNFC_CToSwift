@@ -54,7 +54,7 @@ do {
     print("parsing...")
     
     let rules = try BNFCRule.rules(from: inputFile)
-    let abstractSyntax = try prefix + AbstractSyntaxGenerator.generateSwift(from: rules)
+    let abstractSyntax = prefix + AbstractSyntaxGenerator.generateSwift(from: rules)
     let mapping = prefix + mappingGenerator.generateSwift(from: rules)
     
     print("parsing successful\n")
@@ -70,7 +70,7 @@ do {
     }
     print("")
 }
-catch let AbstractSyntaxGenerator.GeneratorError.parsingFailed(message) {
+catch let BNFCRule.ParsingError.parsingFailed(message) {
     print("parsing failed with message: \(message)")
     exit(-1)
 }

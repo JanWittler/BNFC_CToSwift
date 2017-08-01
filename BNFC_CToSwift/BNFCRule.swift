@@ -17,6 +17,12 @@ internal enum BNFCRule {
     /// a entrypoint rule, created using the `entrypoints` keyword
     case entrypoint(types: [String])
     
+    /// Errors that may occur during grammar parsing
+    enum ParsingError: Error {
+        /// Indicates that parsing failed. Associated value contains detailed information about failure reason.
+        case parsingFailed(String)
+    }
+    
     /**
      Parses the file at the given path into an array of `BNFCRules`, ignoring rules only relevant for parser, which includes rules starting with keywords `comment`, `terminator`, `separator` and `coercions`.
      - parameters:
@@ -62,14 +68,14 @@ internal enum BNFCRule {
     private static func rulesFromBNFCRulesKeyword(_ string: String) throws -> [BNFCRule] {
         let string = string.trimmingCharacters(in: .whitespaces)
         guard let declLocation = string.range(of: "::=") else {
-            throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("invalid rule: \(string)")
+            throw BNFCRule.ParsingError.parsingFailed("invalid rule: \(string)")
         }
         guard let rulesLocation = string.range(of: "rules"), rulesLocation.upperBound < declLocation.lowerBound else {
             print("rules method called with non-`rules` rule: \(string)")
             return []
         }
         guard string.hasSuffix(";") else {
-            throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("rules must be terminated with `;`")
+            throw BNFCRule.ParsingError.parsingFailed("rules must be terminated with `;`")
         }
         
         let type = string.substring(to: declLocation.lowerBound).substring(from: rulesLocation.upperBound).trimmingCharacters(in: .whitespaces)
@@ -80,7 +86,7 @@ internal enum BNFCRule {
         return try constructions.flatMap {
             guard $0.components(separatedBy: " ").count == 1 else {
                 //TODO: update rules support for n constructors per case
-                throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("currently this parser is not able to parse bnfc `rules` keyword with more than one constructor per case")
+                throw BNFCRule.ParsingError.parsingFailed("currently this parser is not able to parse bnfc `rules` keyword with more than one constructor per case")
             }
             //normal bnfc generated rule would be `type_value. type ::= value ;` but we go with `value. type ::= value ;` to have generated enums closer to swift naming conventions
             let ruleString = "\($0.replacingOccurrences(of: "\"", with: "")). \(type) ::= \($0) ;"
@@ -97,7 +103,7 @@ internal enum BNFCRule {
     init?(_ rule: String) throws {
         let tempRule = rule.trimmingCharacters(in: .whitespaces)
         guard tempRule.hasSuffix(";") else {
-            throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("rules must be terminated with `;`")
+            throw BNFCRule.ParsingError.parsingFailed("rules must be terminated with `;`")
         }
         let rule = tempRule.substring(to: tempRule.index(before: tempRule.endIndex))
         //rules below can be ignored
@@ -129,7 +135,7 @@ internal enum BNFCRule {
         }
         
         guard let dotLocation = rule.range(of: "."), let declLocation = rule.range(of: "::=") else {
-            throw AbstractSyntaxGenerator.GeneratorError.parsingFailed("invalid rule: \(rule)")
+            throw BNFCRule.ParsingError.parsingFailed("invalid rule: \(rule)")
         }
         let label = BNFCRule.cleanLabel(rule.substring(to: dotLocation.lowerBound))
         let type  = BNFCRule.cleanType(rule.substring(to: declLocation.lowerBound).substring(from: dotLocation.upperBound))
