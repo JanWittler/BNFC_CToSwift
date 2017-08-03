@@ -203,7 +203,7 @@ struct MappingGenerator {
         "return Swift.Character(Swift.UnicodeScalar(Swift.Int(pChar))!)" + "\n" +
         "}",
         "private func visitString(_ pString: \(moduleName).String) -> Swift.String {" + "\n" +
-        "return String(cString: pString)" + "\n" +
+        "return Swift.String(cString: pString)" + "\n" +
         "}"]
     }
     
