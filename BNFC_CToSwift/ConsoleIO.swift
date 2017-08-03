@@ -19,6 +19,21 @@ struct ProgramConfiguration {
     /// The path to the grammar file
     fileprivate(set) var inputFile: URL?
     
+    /// The dicitionary of additional enum cases that gets used by the abstract syntax generator.
+    fileprivate(set) var additionalCases: [String : [String]] = [:]
+    
+    /**
+     Adds an additional case with the given type and the given case string to the additional cases dictionary.
+     - parameters:
+       - case: The Swift source code of the additional case. Does not get validated.
+       - type: The type to which to add the additional case.
+    */
+    mutating func addAdditionalCase(_ case: String, forType type: String) {
+        var cases = additionalCases[type] ?? []
+        cases.append(`case`)
+        additionalCases[type] = cases
+    }
+    
 }
 
 /**
@@ -27,20 +42,33 @@ struct ProgramConfiguration {
 struct ConsoleIO {
     static func parseCommandLineArguments() -> ProgramConfiguration {
         var i = 1
+        var currentOption: String? = nil
         var config = ProgramConfiguration()
-        while Int32(i) < CommandLine.argc {
+        while i < CommandLine.arguments.count {
             let arg = CommandLine.arguments[i]
-            switch arg {
-            case "-o":
-                i += 1
-                config.outputPath = URL(fileURLWithPath: CommandLine.arguments[i])
-            case "-m":
-                i += 1
-                config.moduleName = CommandLine.arguments[i]
-                
-            default:
+            if arg.hasPrefix("-") {
+                currentOption = arg
+            }
+            else if let currOpt = currentOption {
+                switch currOpt {
+                case "-o":
+                    config.outputPath = URL(fileURLWithPath: arg)
+                case "-m":
+                    config.moduleName = arg
+                case "-extra-case":
+                    let type = arg
+                    i += 1
+                    if i < CommandLine.arguments.count {
+                        let `case` = CommandLine.arguments[i]
+                        config.addAdditionalCase(`case`, forType: type)
+                    }
+                default:
+                    print("ignoring unknown command line paramater '\(currOpt)'")
+                }
+                currentOption = nil
+            }
+            else {
                 config.inputFile = URL(fileURLWithPath: arg)
-                
             }
             i += 1
         }

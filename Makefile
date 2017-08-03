@@ -1,6 +1,7 @@
 grammar ?= "CPP.cf"
 outputPath ?= "./"
 moduleName ?= "CGrammar"
+additionalEnumCases ?= ""
 
 SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
@@ -10,7 +11,7 @@ build: $(SELF_DIR)/BNFC_CToSwift $(SELF_DIR)/BNFC_CToSwift.xcodeproj
 	xcodebuild -project $(SELF_DIR)"/BNFC_CToSwift.xcodeproj" 
 
 run: build
-	$(SELF_DIR)/build/Release/BNFC_CToSwift $(grammar) -o $(outputPath) -m $(moduleName)
+	$(SELF_DIR)/build/Release/BNFC_CToSwift $(grammar) -o $(outputPath) -m $(moduleName) $(additionalEnumCases)
 
 clean:
 	rm -rf $(SELF_DIR)/build/*.build

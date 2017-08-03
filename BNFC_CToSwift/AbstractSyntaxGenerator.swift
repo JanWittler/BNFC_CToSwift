@@ -13,12 +13,13 @@ import Foundation
  */
 struct AbstractSyntaxGenerator {
     /**
-     Generates Swift abstract syntax from the given array of `BNFCRules`. Additionally generates helpers for abstract syntax printing and token comparison.
+     Generates Swift abstract syntax from the given array of `BNFCRules`. Additionally generates helpers for abstract syntax printing and token comparison. Additional enum cases that can not be derived from the `BNFCRules` can be specified using the `additionalCases` dictionary.
      - parameters:
        - rules: The array of rules to create the abstract syntax from.
+       - additionalCases: Additional enum cases to add. The key must match the type name. All values are added as a `case` statement without validation.
      - returns: Returns the source code for the abstract syntax Swift file.
     */
-    static func generateSwift(from rules: [BNFCRule]) -> String {
+    static func generateSwift(from rules: [BNFCRule], additionalCases: [String : [String]] = [:]) -> String {
         var tokens = Set<String>()
         var constructors = [String : [(String, [String])]]()
         
@@ -58,6 +59,17 @@ struct AbstractSyntaxGenerator {
                     rCase += "(" + construction.map { adjustType($0) }.joined(separator: ", ") + ")"
                 }
                 cases.append(rCase)
+            }
+            
+            //add all additional cases for this type
+            if let extraCases = additionalCases[type], !extraCases.isEmpty {
+                cases.append("//additional cases")
+                extraCases.forEach {
+                    let extraCase = $0.hasPrefix("case") ? $0 : "case " + $0
+                    if !cases.contains(extraCase) {
+                        cases.append(extraCase)
+                    }
+                }
             }
             //TODO: not every enum requires the `indirect` flag
             // rather it is only required for those which can create a cycle (possibly with itself or other enums)
