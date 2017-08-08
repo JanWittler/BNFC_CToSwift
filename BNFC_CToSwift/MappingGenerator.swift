@@ -106,7 +106,7 @@ struct MappingGenerator {
         let switchBody = labelsAndConstructions.enumerated().map {
             // C abstract syntax differentiates between cases by using an anonymous enum value. The enum accessors are not bridged to Swift thus they must be addressed by their raw value, which starts at 0 for the first case and increases per case by 1.
             "case \($0):" + "\n" +
-            "return " + generateReturnStatement(forLabel: $1.0, andConstruction: $1.1)
+                "return " + generateReturnStatement(forLabel: $1.0, type: type, andConstruction: $1.1)
         }.joined(separator: "\n") + ("\n" +
         "default:" + "\n" +
         "print(\"Error: bad `kind` field when bridging `\(type)` to Swift!\")\nexit(1)")
@@ -124,12 +124,13 @@ struct MappingGenerator {
     /**
      A helper method to get the statement that creates the enum instance for the given label and construction
      - parameters:
-        - label: The label of the rule to map.
+       - label: The label of the rule to map.
+       - type: The type of the rule to map.
        - construction: The construction of the rule to map.
      - returns: Returns the Swift source code that initializes an enum instance for the given label and construction.
      */
-    private func generateReturnStatement(forLabel label: String, andConstruction construction: [String]) -> String {
-        let enumCase = AbstractSyntaxGenerator.enumCaseFromLabel(label)
+    private func generateReturnStatement(forLabel label: String, type: String, andConstruction construction: [String]) -> String {
+        let enumCase = AbstractSyntaxGenerator.enumCaseFromLabel(label, forType: type)
         let accessorPrefix = "value.u.\(label.lowercased())_."
         
         // create each argument to the enum initialization by calling the corresponding `visit`-function on it

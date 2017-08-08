@@ -53,7 +53,7 @@ struct AbstractSyntaxGenerator {
         for (type, rules) in constructors {
             var cases = [String]()
             for (label, construction) in rules {
-                var rCase = "case \(enumCaseFromLabel(label))"
+                var rCase = "case \(enumCaseFromLabel(label, forType: type))"
                 //constructions are mapped to associated enum values
                 if !construction.isEmpty {
                     rCase += "(" + construction.map { adjustType($0) }.joined(separator: ", ") + ")"
@@ -174,9 +174,31 @@ struct AbstractSyntaxGenerator {
         return type
     }
     
-    /// Returns the name of the enum case for the given label.
-    static func enumCaseFromLabel(_ label: String) -> String {
-        return label.firstCharLowercased()
+    /**
+     Returns the name of the enum case for the given label. If the label has its own type as a prefix, the type is trimmed from the case value to follow Swift naming conventions.
+     - parameters:
+       - label: The label to generate the enum case for.
+       - type: The type with which the label is associated.
+     - returns: Returns the enum case which is used in the abstract syntax for this label and its type. Values that require escaping are returned escaped.
+    */
+    static func enumCaseFromLabel(_ label: String, forType type: String) -> String {
+        var enumCase = label
+        //check if the label has the type as a prefix but contains more than that to not return empty string
+        if let prefix = label.range(of: type, options: .caseInsensitive, range: nil, locale: nil), prefix.lowerBound == label.startIndex, prefix.upperBound != label.endIndex {
+            enumCase = label.substring(from: prefix.upperBound)
+        }
+        //trimm leading '_'
+        if enumCase.hasPrefix("_") && enumCase != "_" {
+            enumCase = enumCase.substring(from: enumCase.index(after: enumCase.startIndex))
+        }
+        
+        enumCase = enumCase.firstCharLowercased()
+        //list of values that must be escaped in a case statement
+        let escapingRequiredCases = ["case", "init", "return", "default", "true", "false"]
+        if escapingRequiredCases.contains(enumCase) {
+            return "`\(enumCase)`"
+        }
+        return enumCase
     }
 }
 

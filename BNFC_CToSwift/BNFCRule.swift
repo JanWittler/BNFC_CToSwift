@@ -88,8 +88,10 @@ internal enum BNFCRule {
                 //TODO: update rules support for n constructors per case
                 throw BNFCRule.ParsingError.parsingFailed("currently this parser is not able to parse bnfc `rules` keyword with more than one constructor per case")
             }
-            //normal bnfc generated rule would be `type_value. type ::= value ;` but we go with `value. type ::= value ;` to have generated enums closer to swift naming conventions
-            let ruleString = "\($0.replacingOccurrences(of: "\"", with: "")). \(type) ::= \($0) ;"
+            // " is not allowed in label name
+            let trimmedValue = $0.replacingOccurrences(of: "\"", with: "")
+            //match bnfc generated rule which would be `type_value. type ::= value ;`
+            let ruleString = "\(type)_\(trimmedValue). \(type) ::= \($0) ;"
             return try BNFCRule(ruleString)
         }
     }
