@@ -22,6 +22,7 @@ struct AbstractSyntaxGenerator {
     static func generateSwift(from rules: [BNFCRule], additionalCases: [String : [String]] = [:]) -> String {
         var tokens = Set<String>()
         var constructors = [String : [(String, [String])]]()
+        var output = [String]()
         
         //group rules by tokens and constructors
         rules.forEach {
@@ -37,28 +38,15 @@ struct AbstractSyntaxGenerator {
             }
         }
         
-        var output = [String]()
-        //tokens are represented as structs holding their values in the `value` field
-        output += tokens.map {
-            "public struct \($0) {" + "\n" +
-            "public let value: String" + "\n" +
-            "\n" +
-            "public init(_ value: String) {" + "\n" +
-            "self.value = value" + "\n"
-            + "}" + "\n" +
-            "}"
-        }
-        
         //generate one enum per type
-        for (type, rules) in constructors {
-            var cases = [String]()
-            for (label, construction) in rules {
-                var rCase = "case \(enumCaseFromLabel(label, forType: type))"
+        let typesAndEnums = constructors.map { (type, rules) -> (String, String) in
+            var cases: [String] = rules.map {
+                var rCase = "case \(enumCaseFromLabel($0, forType: type))"
                 //constructions are mapped to associated enum values
-                if !construction.isEmpty {
-                    rCase += "(" + construction.map { adjustType($0) }.joined(separator: ", ") + ")"
+                if !$1.isEmpty {
+                    rCase += "(" + $1.map { adjustType($0) }.joined(separator: ", ") + ")"
                 }
-                cases.append(rCase)
+                return rCase
             }
             
             //add all additional cases for this type
@@ -76,7 +64,23 @@ struct AbstractSyntaxGenerator {
             let enumString = "public indirect enum \(type) {" + "\n" +
                 cases.joined(separator: "\n") + "\n" +
             "}"
-            output.append(enumString)
+            return (type, enumString)
+        }
+        
+        output += typesAndEnums.sorted { $0.0 < $0.1 }.map { $1 }
+        
+        //tokens are represented as structs holding their values in the `value` field
+        if !tokens.isEmpty {
+            output.append("//MARK:- Tokens")
+        }
+        output += tokens.sorted().map {
+            "public struct \($0) {" + "\n" +
+                "public let value: String" + "\n" +
+                "\n" +
+                "public init(_ value: String) {" + "\n" +
+                "self.value = value" + "\n"
+                + "}" + "\n" +
+            "}"
         }
         
         output += generateConvenienceHelpers(for: rules)
@@ -122,20 +126,20 @@ struct AbstractSyntaxGenerator {
                 "}" + "\n" +
                 "}"
             
-            output.append("//MARK:- custom printing")
+            output.append("//MARK:- Custom printing")
             output.append(customPrintingProtocol)
             output.append(customPrintingImplementation)
         }
         
         // conforming to protocol gives default implemention of `show()`
-        output += types.map { "extension \($0): CustomAbstractSyntaxPrinting {" + "\n" + "}" }
+        output += types.sorted().map { "extension \($0): CustomAbstractSyntaxPrinting {" + "\n" + "}" }
         
         if !tokens.isEmpty {
             output.append("//MARK:- Token helpers")
         }
         
         //tokens have additional helper methods
-        output += tokens.map { tokenHelpers(for: $0) }.reduce([], +)
+        output += tokens.sorted().map { tokenHelpers(for: $0) }.reduce([], +)
         return output
     }
     

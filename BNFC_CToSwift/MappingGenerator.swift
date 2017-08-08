@@ -85,7 +85,7 @@ struct MappingGenerator {
         
         //generate token mappings
         if !tokens.isEmpty {
-            output.append("//MARK:- tokens")
+            output.append("//MARK:- Tokens")
             output += tokens.map { generateTokenMapping(forType: $0) }
         }
         
@@ -191,17 +191,17 @@ struct MappingGenerator {
         "}"
     }
     
-    /// Returns the default type mappings for `Integer`, `Double`, `Char` and `String`.
+    /// Returns the default type mappings for `Char`, `Double`, `Integer` and `String`.
     private func defaultTypeMapping() -> [String] {
-        return ["//MARK:- default types",
-        "private func visitInteger(_ pInteger: \(moduleName).Integer) -> Swift.Int {" + "\n" +
-        "return Swift.Int(pInteger)" + "\n" +
+        return ["//MARK:- Default types",
+        "private func visitChar(_ pChar: \(moduleName).Char) -> Swift.Character {" + "\n" +
+        "return Swift.Character(Swift.UnicodeScalar(Swift.Int(pChar))!)" + "\n" +
         "}",
         "private func visitDouble(_ pDouble: \(moduleName).Double) -> Swift.Double {" + "\n" +
         "return pDouble" + "\n" +
         "}",
-        "private func visitChar(_ pChar: \(moduleName).Char) -> Swift.Character {" + "\n" +
-        "return Swift.Character(Swift.UnicodeScalar(Swift.Int(pChar))!)" + "\n" +
+        "private func visitInteger(_ pInteger: \(moduleName).Integer) -> Swift.Int {" + "\n" +
+        "return Swift.Int(pInteger)" + "\n" +
         "}",
         "private func visitString(_ pString: \(moduleName).String) -> Swift.String {" + "\n" +
         "return Swift.String(cString: pString)" + "\n" +
