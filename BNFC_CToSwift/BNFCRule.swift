@@ -85,7 +85,7 @@ internal enum BNFCRule {
         let constructions = constructionsString.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         return try constructions.flatMap {
             guard $0.components(separatedBy: " ").count == 1 else {
-                //TODO: update rules support for n constructors per case
+                //TODO: Currently only rules with 1 production element are supported. Future versions should include support for n production elements.
                 throw BNFCRule.ParsingError.parsingFailed("currently this parser is not able to parse bnfc `rules` keyword with more than one constructor per case")
             }
             // " is not allowed in label name

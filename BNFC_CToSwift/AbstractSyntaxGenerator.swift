@@ -59,8 +59,7 @@ struct AbstractSyntaxGenerator {
                     }
                 }
             }
-            //TODO: not every enum requires the `indirect` flag
-            // rather it is only required for those which can create a cycle (possibly with itself or other enums)
+            //TODO: For future work, the use of the `indirect` keyword may be limited to only those enums that can create a cycle
             let enumString = "public indirect enum \(type) {" + "\n" +
                 cases.joined(separator: "\n") + "\n" +
             "}"
