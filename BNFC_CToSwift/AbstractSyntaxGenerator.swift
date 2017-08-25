@@ -197,7 +197,7 @@ struct AbstractSyntaxGenerator {
         
         enumCase = enumCase.firstCharLowercased()
         //list of values that must be escaped in a case statement
-        let escapingRequiredCases = ["case", "init", "return", "default", "true", "false"]
+        let escapingRequiredCases = ["case", "init", "return", "default", "true", "false", "switch", "if", "else"]
         if escapingRequiredCases.contains(enumCase) {
             return "`\(enumCase)`"
         }
